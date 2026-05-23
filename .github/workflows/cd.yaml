@@ -1,11 +1,10 @@
-# .github/workflows/cd.yml
 name: CD
 on:
   push:
     branches: [main]
 jobs:
   cd:
-    uses: your-org/finance-infra/.github/workflows/reusable-cd.yaml@main
+    uses: book-entry/finance-infra/.github/workflows/reusable-cd.yaml@main
     with:
       java-version: "21"
       service-name: finance-gateway
