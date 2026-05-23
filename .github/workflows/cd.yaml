@@ -5,7 +5,7 @@ on:
     branches: [main]
 jobs:
   cd:
-    uses: your-org/finance-infra/.github/workflows/reusable-cd.yml@main
+    uses: your-org/finance-infra/.github/workflows/reusable-cd.yaml@main
     with:
       java-version: "21"
       service-name: finance-gateway
