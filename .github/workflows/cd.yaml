@@ -4,6 +4,9 @@ on:
     branches: [main]
 jobs:
   cd:
+    permissions:
+      contents: read
+      packages: write
     uses: book-entry/finance-infra/.github/workflows/reusable-cd.yaml@main
     with:
       java-version: "21"
