@@ -81,9 +81,9 @@
 
         <!-- Shared library -->
         <dependency>
-            <groupId>com.personl.finance</groupId>
+            <groupId>com.personal.finance</groupId>
             <artifactId>finance-common</artifactId>
-            <version>0.0.3</version>
+            <version>0.0.4-SNAPSHOT</version>
         </dependency>
 
         <!-- Test -->
