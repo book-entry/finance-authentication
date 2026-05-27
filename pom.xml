@@ -83,7 +83,7 @@
         <dependency>
             <groupId>com.personal.finance</groupId>
             <artifactId>finance-common</artifactId>
-            <version>0.0.4-SNAPSHOT</version>
+            <version>0.0.4</version>
         </dependency>
 
         <!-- Test -->
