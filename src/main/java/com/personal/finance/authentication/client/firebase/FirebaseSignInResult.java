@@ -9,10 +9,11 @@ import lombok.Value;
  * Firebase REST response payload shape.
  */
 @Value
-@Builder
+@Builder(toBuilder = true)
 public class FirebaseSignInResult {
     String accessToken;
     String refreshToken;
     String uid;
+    String displayName;
     boolean isNewUser;
 }

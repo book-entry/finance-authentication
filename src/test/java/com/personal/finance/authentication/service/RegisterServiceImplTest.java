@@ -96,7 +96,8 @@ class RegisterServiceImplTest {
                 RegisterServiceImpl.CLAIM_NAME, "Alice");
         when(firebaseClient.issueTokensForUid("uid-N"))
                 .thenReturn(FirebaseSignInResult.builder()
-                        .accessToken("a").refreshToken("r").uid("uid-N").build());
+                        .accessToken("a").refreshToken("r").uid("uid-N")
+                        .displayName("Alice").build());
 
         AccessTokenResponse resp = service.verifyOtp(otpReq(session, "123456"));
 
@@ -105,6 +106,7 @@ class RegisterServiceImplTest {
         assertThat(resp.getAccessToken()).isEqualTo("a");
         assertThat(resp.getRefreshToken()).isEqualTo("r");
         assertThat(resp.getUid()).isEqualTo("uid-N");
+        assertThat(resp.getDisplayName()).isEqualTo("Alice");
     }
 
     @Test

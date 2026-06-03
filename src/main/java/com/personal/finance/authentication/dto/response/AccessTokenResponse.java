@@ -14,4 +14,5 @@ public class AccessTokenResponse {
     String accessToken;
     String refreshToken;
     String uid;
+    String displayName;
 }

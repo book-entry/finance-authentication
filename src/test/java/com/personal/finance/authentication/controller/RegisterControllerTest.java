@@ -89,7 +89,7 @@ class RegisterControllerTest {
     @Test
     void verifyOtp_happy_path_returns_201() throws Exception {
         when(registerService.verifyOtp(any())).thenReturn(AccessTokenResponse.builder()
-                .accessToken("a").refreshToken("r").uid("u").build());
+                .accessToken("a").refreshToken("r").uid("u").displayName("Alice").build());
         RegisterVerifyOtpRequest req = new RegisterVerifyOtpRequest();
         req.setSessionToken("sess");
         req.setOtp("123456");
@@ -99,7 +99,8 @@ class RegisterControllerTest {
                         .content(json.writeValueAsString(req)))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.data.accessToken").value("a"))
-                .andExpect(jsonPath("$.data.uid").value("u"));
+                .andExpect(jsonPath("$.data.uid").value("u"))
+                .andExpect(jsonPath("$.data.displayName").value("Alice"));
     }
 
     @Test

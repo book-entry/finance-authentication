@@ -91,7 +91,8 @@ class LoginServiceImplTest {
                 TokenContext.CTX_LOGIN, null, Duration.ofMinutes(5));
         when(firebaseClient.issueTokensForUid("uid-1"))
                 .thenReturn(FirebaseSignInResult.builder()
-                        .accessToken("access").refreshToken("refresh").uid("uid-1").build());
+                        .accessToken("access").refreshToken("refresh").uid("uid-1")
+                        .displayName("Alice").build());
 
         AccessTokenResponse resp = service.verifyOtp(otpReq(session, "123456"));
 
@@ -99,6 +100,7 @@ class LoginServiceImplTest {
         assertThat(resp.getAccessToken()).isEqualTo("access");
         assertThat(resp.getRefreshToken()).isEqualTo("refresh");
         assertThat(resp.getUid()).isEqualTo("uid-1");
+        assertThat(resp.getDisplayName()).isEqualTo("Alice");
     }
 
     @Test
@@ -140,12 +142,14 @@ class LoginServiceImplTest {
     void oauthLogin_happy_path_maps_google_to_firebase_provider() {
         when(firebaseClient.signInWithIdpCredential(eq("google.com"), anyString()))
                 .thenReturn(FirebaseSignInResult.builder()
-                        .accessToken("a").refreshToken("r").uid("u").isNewUser(true).build());
+                        .accessToken("a").refreshToken("r").uid("u")
+                        .displayName("Alice").isNewUser(true).build());
 
         OAuthLoginResponse resp = service.oauthLogin(oauth("google", "id-token"));
 
         assertThat(resp.getUid()).isEqualTo("u");
         assertThat(resp.isNewUser()).isTrue();
+        assertThat(resp.getDisplayName()).isEqualTo("Alice");
     }
 
     @Test

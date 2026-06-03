@@ -82,6 +82,7 @@ public class LoginServiceImpl implements LoginService {
                 .accessToken(result.getAccessToken())
                 .refreshToken(result.getRefreshToken())
                 .uid(uid)
+                .displayName(result.getDisplayName())
                 .build();
     }
 
@@ -102,6 +103,7 @@ public class LoginServiceImpl implements LoginService {
                 .accessToken(result.getAccessToken())
                 .refreshToken(result.getRefreshToken())
                 .uid(result.getUid())
+                .displayName(result.getDisplayName())
                 .isNewUser(result.isNewUser())
                 .build();
     }
