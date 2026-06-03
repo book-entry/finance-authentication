@@ -91,7 +91,7 @@ class LoginControllerTest {
     @Test
     void verifyOtp_happy_path_returns_200_with_tokens() throws Exception {
         when(loginService.verifyOtp(any())).thenReturn(AccessTokenResponse.builder()
-                .accessToken("a").refreshToken("r").uid("u").build());
+                .accessToken("a").refreshToken("r").uid("u").displayName("Alice").build());
         LoginVerifyOtpRequest req = new LoginVerifyOtpRequest();
         req.setSessionToken("sess");
         req.setOtp("123456");
@@ -102,7 +102,8 @@ class LoginControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.accessToken").value("a"))
                 .andExpect(jsonPath("$.data.refreshToken").value("r"))
-                .andExpect(jsonPath("$.data.uid").value("u"));
+                .andExpect(jsonPath("$.data.uid").value("u"))
+                .andExpect(jsonPath("$.data.displayName").value("Alice"));
     }
 
     @Test
@@ -139,7 +140,8 @@ class LoginControllerTest {
     @Test
     void oauthLogin_happy_path_returns_200_with_isNewUser() throws Exception {
         when(loginService.oauthLogin(any())).thenReturn(OAuthLoginResponse.builder()
-                .accessToken("a").refreshToken("r").uid("u").isNewUser(true).build());
+                .accessToken("a").refreshToken("r").uid("u")
+                .displayName("Alice").isNewUser(true).build());
         OAuthLoginRequest req = new OAuthLoginRequest();
         req.setProvider("google");
         req.setIdToken("id-token");
@@ -148,7 +150,8 @@ class LoginControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(json.writeValueAsString(req)))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.isNewUser").value(true));
+                .andExpect(jsonPath("$.data.isNewUser").value(true))
+                .andExpect(jsonPath("$.data.displayName").value("Alice"));
     }
 
     @Test

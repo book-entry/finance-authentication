@@ -81,6 +81,7 @@ public class RegisterServiceImpl implements RegisterService {
                 .accessToken(result.getAccessToken())
                 .refreshToken(result.getRefreshToken())
                 .uid(uid)
+                .displayName(name)
                 .build();
     }
 

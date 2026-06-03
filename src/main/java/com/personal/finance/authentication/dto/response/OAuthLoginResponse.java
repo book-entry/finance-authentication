@@ -11,6 +11,7 @@ public class OAuthLoginResponse {
     String accessToken;
     String refreshToken;
     String uid;
+    String displayName;
     /** Spec field is literally {@code isNewUser} — pin so Jackson does not strip the {@code is} prefix. */
     @JsonProperty("isNewUser")
     boolean isNewUser;

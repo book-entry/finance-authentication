@@ -201,12 +201,25 @@ public class FirebaseAuthClient {
             throw new AuthException(ErrorCode.INTERNAL_ERROR, HttpStatus.INTERNAL_SERVER_ERROR, ex);
         }
         Map<String, Object> body = Map.of("token", customToken, "returnSecureToken", true);
+        FirebaseSignInResult exchange;
         try {
             ResponseEntity<Map> resp = postIdentityToolkit("signInWithCustomToken", body);
-            return mapSignInResponse(resp.getBody(), false, uid);
+            exchange = mapSignInResponse(resp.getBody(), false, uid);
         } catch (HttpStatusCodeException ex) {
             throw new AuthException(ErrorCode.INTERNAL_ERROR, HttpStatus.INTERNAL_SERVER_ERROR,
                     "Failed to exchange " + "custom token");
+        }
+        // signInWithCustomToken does not echo displayName — fetch it from the Admin SDK so callers
+        // can return a greet-able name in the access-token response.
+        return exchange.toBuilder().displayName(fetchDisplayNameOrNull(uid)).build();
+    }
+
+    private String fetchDisplayNameOrNull(String uid) {
+        try {
+            return firebaseAuth.getUser(uid).getDisplayName();
+        } catch (FirebaseAuthException ex) {
+            log.warn("Failed to fetch displayName for uid [{}]: {}", uid, ex.getMessage());
+            return null;
         }
     }
 
@@ -243,6 +256,7 @@ public class FirebaseAuthClient {
                 .accessToken(idToken)
                 .refreshToken(refreshToken)
                 .uid(uid)
+                .displayName(stringOf(body, "displayName"))
                 .isNewUser(newUser)
                 .build();
     }

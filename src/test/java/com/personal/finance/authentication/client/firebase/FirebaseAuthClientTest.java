@@ -53,7 +53,8 @@ class FirebaseAuthClientTest {
         Map<String, Object> body = Map.of(
                 "idToken", "id-tok",
                 "refreshToken", "refresh-tok",
-                "localId", "uid-1");
+                "localId", "uid-1",
+                "displayName", "Alice");
         when(restTemplate.exchange(contains("signInWithPassword"), eq(HttpMethod.POST), any(), eq(Map.class)))
                 .thenReturn(new ResponseEntity(body, HttpStatus.OK));
 
@@ -62,6 +63,7 @@ class FirebaseAuthClientTest {
         assertThat(result.getAccessToken()).isEqualTo("id-tok");
         assertThat(result.getRefreshToken()).isEqualTo("refresh-tok");
         assertThat(result.getUid()).isEqualTo("uid-1");
+        assertThat(result.getDisplayName()).isEqualTo("Alice");
     }
 
     @Test
@@ -86,6 +88,7 @@ class FirebaseAuthClientTest {
                 "idToken", "id-tok",
                 "refreshToken", "refresh-tok",
                 "localId", "uid-G",
+                "displayName", "Alice",
                 "isNewUser", true);
         when(restTemplate.exchange(contains("signInWithIdp"), eq(HttpMethod.POST), any(), eq(Map.class)))
                 .thenReturn(new ResponseEntity(body, HttpStatus.OK));
@@ -94,6 +97,52 @@ class FirebaseAuthClientTest {
 
         assertThat(result.getUid()).isEqualTo("uid-G");
         assertThat(result.isNewUser()).isTrue();
+        assertThat(result.getDisplayName()).isEqualTo("Alice");
+    }
+
+    // ── issueTokensForUid ─────────────────────────────────────────────────
+
+    @Test
+    @SuppressWarnings({"unchecked", "rawtypes"})
+    void issueTokensForUid_enriches_response_with_admin_sdk_displayName() throws Exception {
+        // signInWithCustomToken response does not include displayName — client should
+        // backfill it from a follow-up Admin SDK getUser call.
+        when(firebaseAuth.createCustomToken("uid-C")).thenReturn("custom-tok");
+        Map<String, Object> exchange = Map.of(
+                "idToken", "id-tok",
+                "refreshToken", "refresh-tok",
+                "localId", "uid-C");
+        when(restTemplate.exchange(contains("signInWithCustomToken"), eq(HttpMethod.POST), any(), eq(Map.class)))
+                .thenReturn(new ResponseEntity(exchange, HttpStatus.OK));
+        UserRecord record = mock(UserRecord.class);
+        when(record.getDisplayName()).thenReturn("Alice");
+        when(firebaseAuth.getUser("uid-C")).thenReturn(record);
+
+        FirebaseSignInResult result = client.issueTokensForUid("uid-C");
+
+        assertThat(result.getAccessToken()).isEqualTo("id-tok");
+        assertThat(result.getRefreshToken()).isEqualTo("refresh-tok");
+        assertThat(result.getUid()).isEqualTo("uid-C");
+        assertThat(result.getDisplayName()).isEqualTo("Alice");
+    }
+
+    @Test
+    @SuppressWarnings({"unchecked", "rawtypes"})
+    void issueTokensForUid_displayName_is_null_when_admin_sdk_fetch_fails() throws Exception {
+        when(firebaseAuth.createCustomToken("uid-C")).thenReturn("custom-tok");
+        Map<String, Object> exchange = Map.of(
+                "idToken", "id-tok",
+                "refreshToken", "refresh-tok",
+                "localId", "uid-C");
+        when(restTemplate.exchange(contains("signInWithCustomToken"), eq(HttpMethod.POST), any(), eq(Map.class)))
+                .thenReturn(new ResponseEntity(exchange, HttpStatus.OK));
+        when(firebaseAuth.getUser("uid-C")).thenThrow(stubFirebaseException(
+                ErrorCode.NOT_FOUND, "user gone"));
+
+        FirebaseSignInResult result = client.issueTokensForUid("uid-C");
+
+        assertThat(result.getUid()).isEqualTo("uid-C");
+        assertThat(result.getDisplayName()).isNull();
     }
 
     @Test
