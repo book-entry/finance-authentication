@@ -14,6 +14,9 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.client.HttpStatusCodeException;
 import org.springframework.web.client.RestTemplate;
 
+import java.time.Instant;
+import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
 import java.util.Map;
 
 /**
@@ -173,6 +176,61 @@ public class FirebaseAuthClient {
     }
 
     // ── Admin: createCustomToken + exchange ───────────────────────────────
+
+    // ── Admin: getUser / profile (REQ-settings-backend §3) ────────────────
+
+    /**
+     * REQ-settings-backend §3.2 — fetch the full profile projection for
+     * {@code GET /v1/me}. The {@code uid} comes from an already-verified Firebase
+     * ID token, so a NOT_FOUND here means the account was deleted after the token
+     * was minted — surfaced as 401 to force re-authentication.
+     */
+    public FirebaseUserProfile getUser(String uid) {
+        try {
+            return toProfile(firebaseAuth.getUser(uid));
+        } catch (FirebaseAuthException ex) {
+            String code = ex.getErrorCode() == null ? "" : ex.getErrorCode().name();
+            if ("USER_NOT_FOUND".equals(code) || "NOT_FOUND".equals(code)
+                    || (ex.getMessage() != null && ex.getMessage().toUpperCase().contains("NOT_FOUND"))) {
+                throw new AuthException(ErrorCode.INVALID_TOKEN, HttpStatus.UNAUTHORIZED,
+                        "User no longer exists");
+            }
+            throw new AuthException(ErrorCode.INTERNAL_ERROR, HttpStatus.INTERNAL_SERVER_ERROR, ex);
+        }
+    }
+
+    /**
+     * REQ-settings-backend §3.3 — set the display name for {@code PATCH /v1/me}.
+     * Returns the updated profile (the Admin SDK echoes the full record) so the
+     * caller can return the hydrated shape without a second round-trip.
+     */
+    public FirebaseUserProfile updateDisplayName(String uid, String displayName) {
+        try {
+            UserRecord record = firebaseAuth.updateUser(
+                    new UserRecord.UpdateRequest(uid).setDisplayName(displayName));
+            return toProfile(record);
+        } catch (FirebaseAuthException ex) {
+            throw new AuthException(ErrorCode.INTERNAL_ERROR, HttpStatus.INTERNAL_SERVER_ERROR, ex);
+        }
+    }
+
+    private static FirebaseUserProfile toProfile(UserRecord record) {
+        var meta = record.getUserMetadata();
+        return FirebaseUserProfile.builder()
+                .uid(record.getUid())
+                .email(record.getEmail())
+                .emailVerified(record.isEmailVerified())
+                .displayName(record.getDisplayName())
+                .createdAt(meta == null ? null : toUtc(meta.getCreationTimestamp()))
+                .lastSignInAt(meta == null ? null : toUtc(meta.getLastSignInTimestamp()))
+                .build();
+    }
+
+    /** Firebase metadata uses epoch-millis with 0 meaning "never". Map that to null. */
+    private static OffsetDateTime toUtc(long epochMillis) {
+        return epochMillis <= 0 ? null
+                : OffsetDateTime.ofInstant(Instant.ofEpochMilli(epochMillis), ZoneOffset.UTC);
+    }
 
     /**
      * Implements spec §3.7 / §3.10 — change the user's password.
