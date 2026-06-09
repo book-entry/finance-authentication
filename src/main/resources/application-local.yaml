@@ -10,6 +10,13 @@ spring:
     redis:
       url: redis://:9fLzNKoDEa8krAx1c0YO3RgWl576Vm24@47.84.7.14:30252
 
+finance:
+  security:
+    # Must match finance-gateway's local finance.gateway.internal.secret so the
+    # gateway's forwarded /v1/me/** calls pass MeSecurityConfig's InternalRequestFilter.
+    internal:
+      secret: 2d9feb21285aa6cccd32de04a06d487f168aca93b1840090d0b6c2944f491f86
+
 app:
   jwt:
     secret: 851ab9595fb9afc87438b532eb975b57af9dd4f29ded2e0ed8714a96a71e5a50

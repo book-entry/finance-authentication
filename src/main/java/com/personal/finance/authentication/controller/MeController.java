@@ -3,8 +3,6 @@ package com.personal.finance.authentication.controller;
 import com.personal.finance.authentication.dto.request.UpdateMeRequest;
 import com.personal.finance.authentication.dto.response.MeResponse;
 import com.personal.finance.authentication.service.MeService;
-import com.personal.finance.common.security.annotation.CurrentUser;
-import com.personal.finance.common.security.model.AuthenticatedUser;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -16,6 +14,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -52,8 +51,8 @@ public class MeController {
             @ApiResponse(responseCode = "401", description = "Gateway envelope missing or invalid.",
                     content = @Content(schema = @Schema(implementation = com.personal.finance.common.web.ApiResponse.class)))
     })
-    public MeResponse getMe(@CurrentUser AuthenticatedUser user) {
-        return meService.getMe(user.getUid());
+    public MeResponse getMe(@RequestHeader("X-User-Id") String uid) {
+        return meService.getMe(uid);
     }
 
     /** REQ-settings-backend §3.3 — {@code PATCH /v1/me}. */
@@ -69,8 +68,8 @@ public class MeController {
             @ApiResponse(responseCode = "401", description = "Gateway envelope missing or invalid.",
                     content = @Content(schema = @Schema(implementation = com.personal.finance.common.web.ApiResponse.class)))
     })
-    public MeResponse updateMe(@CurrentUser AuthenticatedUser user,
+    public MeResponse updateMe(@RequestHeader("X-User-Id") String uid,
                                @RequestBody(required = false) UpdateMeRequest request) {
-        return meService.updateMe(user.getUid(), request);
+        return meService.updateMe(uid, request);
     }
 }
