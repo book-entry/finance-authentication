@@ -9,6 +9,14 @@ spring:
     redis:
       url: ${REDIS_URL:redis://localhost:6379}
 
+finance:
+  security:
+    # Used by MeSecurityConfig's InternalRequestFilter to authenticate
+    # /v1/me/** calls forwarded by the gateway. Must match the gateway's
+    # finance.gateway.internal.secret. See REQ-settings-backend §3.
+    internal:
+      secret: ${INTERNAL_SERVICE_SECRET:}
+
 app:
   jwt:
     secret: ${JWT_SECRET:}

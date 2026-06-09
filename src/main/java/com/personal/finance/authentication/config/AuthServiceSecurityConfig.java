@@ -38,8 +38,6 @@ public class AuthServiceSecurityConfig {
             "/v1/register/**",
             "/v1/password/**",
             "/v1/otp/**",
-            "/v1/me",
-            "/v1/me/**",
             "/actuator/health",
             "/actuator/info"
     };
