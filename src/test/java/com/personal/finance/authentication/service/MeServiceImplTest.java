@@ -2,7 +2,6 @@ package com.personal.finance.authentication.service;
 
 import com.personal.finance.authentication.client.firebase.FirebaseAuthClient;
 import com.personal.finance.authentication.client.firebase.FirebaseUserProfile;
-import com.personal.finance.authentication.client.firebase.FirebaseUserRecord;
 import com.personal.finance.authentication.dto.request.UpdateMeRequest;
 import com.personal.finance.authentication.dto.response.MeResponse;
 import com.personal.finance.authentication.exception.AuthException;
@@ -32,7 +31,6 @@ class MeServiceImplTest {
 
     MeServiceImpl service;
 
-    private static final String BEARER = "Bearer id-token-A";
     private static final String UID = "uid-U";
 
     @BeforeEach
@@ -54,12 +52,10 @@ class MeServiceImplTest {
     // ── GET /me ───────────────────────────────────────────────────────────
 
     @Test
-    void getMe_verifiesToken_and_returns_hydrated_firebase_fields() {
-        when(firebaseClient.verifyIdToken("id-token-A"))
-                .thenReturn(new FirebaseUserRecord(UID, "u@example.com"));
+    void getMe_returns_hydrated_firebase_fields_for_uid() {
         when(firebaseClient.getUser(UID)).thenReturn(sampleProfile("Alice Wong"));
 
-        MeResponse resp = service.getMe(BEARER);
+        MeResponse resp = service.getMe(UID);
 
         assertThat(resp.getUid()).isEqualTo(UID);
         assertThat(resp.getEmail()).isEqualTo("u@example.com");
@@ -67,68 +63,56 @@ class MeServiceImplTest {
         assertThat(resp.getDisplayName()).isEqualTo("Alice Wong");
         assertThat(resp.getCreatedAt()).isEqualTo(OffsetDateTime.of(2025, 8, 12, 3, 14, 21, 0, ZoneOffset.UTC));
         assertThat(resp.getLastSignInAt()).isEqualTo(OffsetDateTime.of(2026, 6, 4, 1, 2, 3, 0, ZoneOffset.UTC));
+        // Token verification is the gateway's responsibility — confirm we don't repeat it.
+        verify(firebaseClient, never()).verifyIdToken(anyString());
     }
 
     @Test
     void getMe_passes_through_null_displayName_and_lastSignIn() {
-        when(firebaseClient.verifyIdToken(anyString()))
-                .thenReturn(new FirebaseUserRecord(UID, "u@example.com"));
         when(firebaseClient.getUser(UID)).thenReturn(FirebaseUserProfile.builder()
                 .uid(UID).email("u@example.com").emailVerified(false)
                 .displayName(null).createdAt(OffsetDateTime.now(ZoneOffset.UTC)).lastSignInAt(null)
                 .build());
 
-        MeResponse resp = service.getMe(BEARER);
+        MeResponse resp = service.getMe(UID);
 
         assertThat(resp.getDisplayName()).isNull();
         assertThat(resp.getLastSignInAt()).isNull();
         assertThat(resp.isEmailVerified()).isFalse();
     }
 
-    @Test
-    void getMe_without_bearer_prefix_throws_invalid_token_and_skips_firebase() {
-        assertThatThrownBy(() -> service.getMe("id-token-A"))
-                .isInstanceOf(AuthException.class)
-                .satisfies(ex -> assertThat(((AuthException) ex).getErrorCode())
-                        .isEqualTo(ErrorCode.INVALID_TOKEN));
-        verifyNoInteractions(firebaseClient);
-    }
-
-    @Test
-    void getMe_with_blank_bearer_throws_invalid_token() {
-        assertThatThrownBy(() -> service.getMe("Bearer    "))
-                .isInstanceOf(AuthException.class)
-                .satisfies(ex -> assertThat(((AuthException) ex).getErrorCode())
-                        .isEqualTo(ErrorCode.INVALID_TOKEN));
-    }
-
     // ── PATCH /me ─────────────────────────────────────────────────────────
 
     @Test
     void updateMe_trims_displayName_updates_firebase_and_returns_hydrated_shape() {
-        when(firebaseClient.verifyIdToken("id-token-A"))
-                .thenReturn(new FirebaseUserRecord(UID, "u@example.com"));
         when(firebaseClient.updateDisplayName(UID, "Alice W.")).thenReturn(sampleProfile("Alice W."));
 
         UpdateMeRequest req = new UpdateMeRequest();
         req.setDisplayName("  Alice W.  ");
 
-        MeResponse resp = service.updateMe(BEARER, req);
+        MeResponse resp = service.updateMe(UID, req);
 
         ArgumentCaptor<String> name = ArgumentCaptor.forClass(String.class);
         verify(firebaseClient).updateDisplayName(org.mockito.ArgumentMatchers.eq(UID), name.capture());
         assertThat(name.getValue()).isEqualTo("Alice W.");
         assertThat(resp.getDisplayName()).isEqualTo("Alice W.");
+        verify(firebaseClient, never()).verifyIdToken(anyString());
+    }
+
+    @Test
+    void updateMe_with_null_body_throws_invalid_input_and_does_not_update() {
+        assertThatThrownBy(() -> service.updateMe(UID, null))
+                .isInstanceOf(AuthException.class)
+                .satisfies(ex -> assertThat(((AuthException) ex).getErrorCode())
+                        .isEqualTo(ErrorCode.INVALID_INPUT));
+        verifyNoInteractions(firebaseClient);
     }
 
     @Test
     void updateMe_with_null_displayName_throws_invalid_input_and_does_not_update() {
-        when(firebaseClient.verifyIdToken(anyString()))
-                .thenReturn(new FirebaseUserRecord(UID, "u@example.com"));
-
         UpdateMeRequest req = new UpdateMeRequest(); // displayName null
 
-        assertThatThrownBy(() -> service.updateMe(BEARER, req))
+        assertThatThrownBy(() -> service.updateMe(UID, req))
                 .isInstanceOf(AuthException.class)
                 .satisfies(ex -> assertThat(((AuthException) ex).getErrorCode())
                         .isEqualTo(ErrorCode.INVALID_INPUT));
@@ -137,13 +121,10 @@ class MeServiceImplTest {
 
     @Test
     void updateMe_with_blank_displayName_throws_invalid_input() {
-        when(firebaseClient.verifyIdToken(anyString()))
-                .thenReturn(new FirebaseUserRecord(UID, "u@example.com"));
-
         UpdateMeRequest req = new UpdateMeRequest();
         req.setDisplayName("   ");
 
-        assertThatThrownBy(() -> service.updateMe(BEARER, req))
+        assertThatThrownBy(() -> service.updateMe(UID, req))
                 .isInstanceOf(AuthException.class)
                 .satisfies(ex -> assertThat(((AuthException) ex).getErrorCode())
                         .isEqualTo(ErrorCode.INVALID_INPUT));
@@ -151,13 +132,10 @@ class MeServiceImplTest {
 
     @Test
     void updateMe_with_too_long_displayName_throws_invalid_input() {
-        when(firebaseClient.verifyIdToken(anyString()))
-                .thenReturn(new FirebaseUserRecord(UID, "u@example.com"));
-
         UpdateMeRequest req = new UpdateMeRequest();
         req.setDisplayName("x".repeat(61));
 
-        assertThatThrownBy(() -> service.updateMe(BEARER, req))
+        assertThatThrownBy(() -> service.updateMe(UID, req))
                 .isInstanceOf(AuthException.class)
                 .satisfies(ex -> assertThat(((AuthException) ex).getErrorCode())
                         .isEqualTo(ErrorCode.INVALID_INPUT));
@@ -166,14 +144,12 @@ class MeServiceImplTest {
     @Test
     void updateMe_accepts_max_length_displayName() {
         String sixty = "x".repeat(60);
-        when(firebaseClient.verifyIdToken(anyString()))
-                .thenReturn(new FirebaseUserRecord(UID, "u@example.com"));
         when(firebaseClient.updateDisplayName(UID, sixty)).thenReturn(sampleProfile(sixty));
 
         UpdateMeRequest req = new UpdateMeRequest();
         req.setDisplayName(sixty);
 
-        MeResponse resp = service.updateMe(BEARER, req);
+        MeResponse resp = service.updateMe(UID, req);
         assertThat(resp.getDisplayName()).isEqualTo(sixty);
     }
 }
