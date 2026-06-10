@@ -5,9 +5,6 @@ server:
 spring:
   application:
     name: finance-authentication
-  data:
-    redis:
-      url: ${REDIS_URL:redis://localhost:6379}
 
 finance:
   security:
@@ -18,23 +15,11 @@ finance:
       secret: ${INTERNAL_SERVICE_SECRET:}
 
 app:
-  jwt:
-    secret: ${JWT_SECRET:}
-  twilio:
-    account-sid: ${TWILIO_ACCOUNT_SID:}
-    auth-token: ${TWILIO_AUTH_TOKEN:}
-    verify-sid: ${TWILIO_VERIFY_SID:}
-    channel: ${OTP_CHANNEL:email}
-    # Local-testing only. When true, OTP send is a no-op and OTP verify
-    # accepts only the fixed code 123456. Never enable in production.
-    bypass: ${TWILIO_BYPASS:false}
   firebase:
     credentials-path: ${FIREBASE_ADMIN_KEY_JSON:}
     credentials-json: ${FIREBASE_CREDENTIALS_JSON:}
     project-id: ${FIREBASE_PROJECT_ID:}
     api-key: ${FIREBASE_API_KEY:}
-  otp:
-    resend-cooldown-seconds: ${RESEND_COOLDOWN_SECONDS:60}
 
 management:
   endpoints:
