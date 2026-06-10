@@ -45,40 +45,6 @@ class FirebaseAuthClientTest {
         client = new FirebaseAuthClient(firebaseAuth, props, restTemplate);
     }
 
-    // ── signInWithEmailAndPassword ────────────────────────────────────────
-
-    @Test
-    @SuppressWarnings({"unchecked", "rawtypes"})
-    void signInWithEmailAndPassword_returns_tokens_on_success() {
-        Map<String, Object> body = Map.of(
-                "idToken", "id-tok",
-                "refreshToken", "refresh-tok",
-                "localId", "uid-1",
-                "displayName", "Alice");
-        when(restTemplate.exchange(contains("signInWithPassword"), eq(HttpMethod.POST), any(), eq(Map.class)))
-                .thenReturn(new ResponseEntity(body, HttpStatus.OK));
-
-        FirebaseSignInResult result = client.signInWithEmailAndPassword("u@example.com", "Passw0rd!");
-
-        assertThat(result.getAccessToken()).isEqualTo("id-tok");
-        assertThat(result.getRefreshToken()).isEqualTo("refresh-tok");
-        assertThat(result.getUid()).isEqualTo("uid-1");
-        assertThat(result.getDisplayName()).isEqualTo("Alice");
-    }
-
-    @Test
-    @SuppressWarnings("rawtypes")
-    void signInWithEmailAndPassword_translates_http_error_to_invalid_credentials() {
-        when(restTemplate.exchange(any(String.class), any(HttpMethod.class), any(), eq(Map.class)))
-                .thenThrow(HttpClientErrorException.create(HttpStatusCode.valueOf(400), "Bad Request",
-                        new org.springframework.http.HttpHeaders(), new byte[0], null));
-
-        assertThatThrownBy(() -> client.signInWithEmailAndPassword("u@example.com", "wrong"))
-                .isInstanceOf(AuthException.class)
-                .satisfies(ex -> assertThat(((AuthException) ex).getErrorCode())
-                        .isEqualTo(com.personal.finance.common.exception.ErrorCode.INVALID_CREDENTIALS));
-    }
-
     // ── signInWithIdpCredential ───────────────────────────────────────────
 
     @Test
@@ -95,54 +61,11 @@ class FirebaseAuthClientTest {
 
         FirebaseSignInResult result = client.signInWithIdpCredential("google.com", "provider-id-tok");
 
+        assertThat(result.getAccessToken()).isEqualTo("id-tok");
+        assertThat(result.getRefreshToken()).isEqualTo("refresh-tok");
         assertThat(result.getUid()).isEqualTo("uid-G");
         assertThat(result.isNewUser()).isTrue();
         assertThat(result.getDisplayName()).isEqualTo("Alice");
-    }
-
-    // ── issueTokensForUid ─────────────────────────────────────────────────
-
-    @Test
-    @SuppressWarnings({"unchecked", "rawtypes"})
-    void issueTokensForUid_enriches_response_with_admin_sdk_displayName() throws Exception {
-        // signInWithCustomToken response does not include displayName — client should
-        // backfill it from a follow-up Admin SDK getUser call.
-        when(firebaseAuth.createCustomToken("uid-C")).thenReturn("custom-tok");
-        Map<String, Object> exchange = Map.of(
-                "idToken", "id-tok",
-                "refreshToken", "refresh-tok",
-                "localId", "uid-C");
-        when(restTemplate.exchange(contains("signInWithCustomToken"), eq(HttpMethod.POST), any(), eq(Map.class)))
-                .thenReturn(new ResponseEntity(exchange, HttpStatus.OK));
-        UserRecord record = mock(UserRecord.class);
-        when(record.getDisplayName()).thenReturn("Alice");
-        when(firebaseAuth.getUser("uid-C")).thenReturn(record);
-
-        FirebaseSignInResult result = client.issueTokensForUid("uid-C");
-
-        assertThat(result.getAccessToken()).isEqualTo("id-tok");
-        assertThat(result.getRefreshToken()).isEqualTo("refresh-tok");
-        assertThat(result.getUid()).isEqualTo("uid-C");
-        assertThat(result.getDisplayName()).isEqualTo("Alice");
-    }
-
-    @Test
-    @SuppressWarnings({"unchecked", "rawtypes"})
-    void issueTokensForUid_displayName_is_null_when_admin_sdk_fetch_fails() throws Exception {
-        when(firebaseAuth.createCustomToken("uid-C")).thenReturn("custom-tok");
-        Map<String, Object> exchange = Map.of(
-                "idToken", "id-tok",
-                "refreshToken", "refresh-tok",
-                "localId", "uid-C");
-        when(restTemplate.exchange(contains("signInWithCustomToken"), eq(HttpMethod.POST), any(), eq(Map.class)))
-                .thenReturn(new ResponseEntity(exchange, HttpStatus.OK));
-        when(firebaseAuth.getUser("uid-C")).thenThrow(stubFirebaseException(
-                ErrorCode.NOT_FOUND, "user gone"));
-
-        FirebaseSignInResult result = client.issueTokensForUid("uid-C");
-
-        assertThat(result.getUid()).isEqualTo("uid-C");
-        assertThat(result.getDisplayName()).isNull();
     }
 
     @Test
@@ -158,79 +81,47 @@ class FirebaseAuthClientTest {
                         .isEqualTo(com.personal.finance.common.exception.ErrorCode.INVALID_ID_TOKEN));
     }
 
-    // ── createUser ────────────────────────────────────────────────────────
+    // ── getUser (profile) ─────────────────────────────────────────────────
 
     @Test
-    void createUser_returns_uid_on_success() throws Exception {
+    void getUser_returns_profile_on_success() throws Exception {
         UserRecord record = mock(UserRecord.class);
-        when(record.getUid()).thenReturn("uid-N");
-        when(firebaseAuth.createUser(any())).thenReturn(record);
+        when(record.getUid()).thenReturn("uid-P");
+        when(record.getEmail()).thenReturn("p@example.com");
+        when(record.getDisplayName()).thenReturn("Alice");
+        when(firebaseAuth.getUser("uid-P")).thenReturn(record);
 
-        String uid = client.createUser("u@example.com", "Passw0rd!", "Alice");
+        FirebaseUserProfile profile = client.getUser("uid-P");
 
-        assertThat(uid).isEqualTo("uid-N");
+        assertThat(profile.getUid()).isEqualTo("uid-P");
+        assertThat(profile.getEmail()).isEqualTo("p@example.com");
+        assertThat(profile.getDisplayName()).isEqualTo("Alice");
     }
 
     @Test
-    void createUser_translates_email_exists_to_email_in_use() throws Exception {
-        // FirebaseAuthClient detects EMAIL_EXISTS via message text ("already in use")
-        FirebaseAuthException ex = stubFirebaseException(ErrorCode.ALREADY_EXISTS,
-                "EMAIL_EXISTS: The email address is already in use by another account.");
-        when(firebaseAuth.createUser(any())).thenThrow(ex);
+    void getUser_translates_not_found_to_invalid_token() throws Exception {
+        FirebaseAuthException ex = stubFirebaseException(ErrorCode.NOT_FOUND,
+                "USER_NOT_FOUND: There is no user record corresponding to the provided identifier.");
+        when(firebaseAuth.getUser("ghost")).thenThrow(ex);
 
-        assertThatThrownBy(() -> client.createUser("u@example.com", "Passw0rd!", "Alice"))
-                .isInstanceOf(AuthException.class)
-                .satisfies(e -> assertThat(((AuthException) e).getErrorCode())
-                        .isEqualTo(com.personal.finance.common.exception.ErrorCode.EMAIL_IN_USE));
-    }
-
-    // ── verifyIdToken ─────────────────────────────────────────────────────
-
-    @Test
-    void verifyIdToken_returns_uid_email_on_success() throws Exception {
-        com.google.firebase.auth.FirebaseToken token = mock(com.google.firebase.auth.FirebaseToken.class);
-        when(token.getUid()).thenReturn("uid-V");
-        when(token.getEmail()).thenReturn("v@example.com");
-        when(firebaseAuth.verifyIdToken("good-id-token")).thenReturn(token);
-
-        FirebaseUserRecord result = client.verifyIdToken("good-id-token");
-
-        assertThat(result.getUid()).isEqualTo("uid-V");
-        assertThat(result.getEmail()).isEqualTo("v@example.com");
-    }
-
-    @Test
-    void verifyIdToken_translates_firebase_failure_to_invalid_token() throws Exception {
-        FirebaseAuthException ex = stubFirebaseException(ErrorCode.INVALID_ARGUMENT, "Invalid token");
-        when(firebaseAuth.verifyIdToken("bad")).thenThrow(ex);
-
-        assertThatThrownBy(() -> client.verifyIdToken("bad"))
+        assertThatThrownBy(() -> client.getUser("ghost"))
                 .isInstanceOf(AuthException.class)
                 .satisfies(e -> assertThat(((AuthException) e).getErrorCode())
                         .isEqualTo(com.personal.finance.common.exception.ErrorCode.INVALID_TOKEN));
     }
 
-    // ── getUserByEmailOrNull ──────────────────────────────────────────────
+    // ── updateDisplayName (profile) ───────────────────────────────────────
 
     @Test
-    void getUserByEmailOrNull_returns_record_on_match() throws Exception {
+    void updateDisplayName_returns_updated_profile() throws Exception {
         UserRecord record = mock(UserRecord.class);
-        when(record.getUid()).thenReturn("uid-X");
-        when(record.getEmail()).thenReturn("x@example.com");
-        when(firebaseAuth.getUserByEmail("x@example.com")).thenReturn(record);
+        when(record.getUid()).thenReturn("uid-P");
+        when(record.getDisplayName()).thenReturn("New Name");
+        when(firebaseAuth.updateUser(any())).thenReturn(record);
 
-        FirebaseUserRecord result = client.getUserByEmailOrNull("x@example.com");
+        FirebaseUserProfile profile = client.updateDisplayName("uid-P", "New Name");
 
-        assertThat(result.getUid()).isEqualTo("uid-X");
-    }
-
-    @Test
-    void getUserByEmailOrNull_returns_null_when_user_not_found() throws Exception {
-        FirebaseAuthException ex = stubFirebaseException(ErrorCode.NOT_FOUND,
-                "USER_NOT_FOUND: There is no user record corresponding to the provided identifier.");
-        when(firebaseAuth.getUserByEmail("ghost@example.com")).thenThrow(ex);
-
-        assertThat(client.getUserByEmailOrNull("ghost@example.com")).isNull();
+        assertThat(profile.getDisplayName()).isEqualTo("New Name");
     }
 
     // ── helper ────────────────────────────────────────────────────────────

@@ -11,9 +11,6 @@ import java.time.OffsetDateTime;
  * the service layer and converts the SDK's epoch-millis metadata into UTC
  * {@link OffsetDateTime} instants at the boundary — every other service emits
  * ISO-8601 UTC, so {@code /me} stays consistent.
- *
- * <p>Distinct from {@link FirebaseUserRecord} (uid/email only) which the
- * pre-token flows use; this carries the fields the Profile form needs.
  */
 @Value
 @Builder

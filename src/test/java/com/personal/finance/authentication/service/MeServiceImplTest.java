@@ -63,8 +63,6 @@ class MeServiceImplTest {
         assertThat(resp.getDisplayName()).isEqualTo("Alice Wong");
         assertThat(resp.getCreatedAt()).isEqualTo(OffsetDateTime.of(2025, 8, 12, 3, 14, 21, 0, ZoneOffset.UTC));
         assertThat(resp.getLastSignInAt()).isEqualTo(OffsetDateTime.of(2026, 6, 4, 1, 2, 3, 0, ZoneOffset.UTC));
-        // Token verification is the gateway's responsibility — confirm we don't repeat it.
-        verify(firebaseClient, never()).verifyIdToken(anyString());
     }
 
     @Test
@@ -96,7 +94,6 @@ class MeServiceImplTest {
         verify(firebaseClient).updateDisplayName(org.mockito.ArgumentMatchers.eq(UID), name.capture());
         assertThat(name.getValue()).isEqualTo("Alice W.");
         assertThat(resp.getDisplayName()).isEqualTo("Alice W.");
-        verify(firebaseClient, never()).verifyIdToken(anyString());
     }
 
     @Test

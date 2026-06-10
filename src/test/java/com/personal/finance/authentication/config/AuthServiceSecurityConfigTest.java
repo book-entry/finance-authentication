@@ -1,7 +1,7 @@
 package com.personal.finance.authentication.config;
 
 import com.personal.finance.authentication.controller.LoginController;
-import com.personal.finance.authentication.dto.response.LoginResponse;
+import com.personal.finance.authentication.dto.response.OAuthLoginResponse;
 import com.personal.finance.authentication.service.LoginService;
 import com.personal.finance.common.web.ApiResponseBodyAdvice;
 import com.personal.finance.common.web.GlobalExceptionHandler;
@@ -21,7 +21,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 /**
  * Regression test: with the Spring Security filter chain active (filters NOT
- * disabled), {@code POST /v1/login} must succeed without any
+ * disabled), {@code POST /v1/login/oauth} must succeed without any
  * {@code Authorization} header. Without
  * {@link AuthServiceSecurityConfig}, Spring Boot's default
  * {@code SecurityAutoConfiguration} (or finance-common's catch-all chain in
@@ -39,15 +39,15 @@ class AuthServiceSecurityConfigTest {
     @MockitoBean LoginService loginService;
 
     @Test
-    void post_login_is_permitted_without_any_bearer_token() throws Exception {
-        when(loginService.login(any())).thenReturn(LoginResponse.builder()
-                .sessionToken("sess").requiresOtp(true).expiresIn(300L).build());
+    void post_login_oauth_is_permitted_without_any_bearer_token() throws Exception {
+        when(loginService.oauthLogin(any())).thenReturn(OAuthLoginResponse.builder()
+                .accessToken("a").refreshToken("r").uid("u").isNewUser(false).build());
 
-        mvc.perform(post("/v1/login")
+        mvc.perform(post("/v1/login/oauth")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"email\":\"u@example.com\",\"password\":\"Passw0rd!\"}"))
-                .andExpect(status().isAccepted())
+                        .content("{\"provider\":\"google\",\"idToken\":\"id-token\"}"))
+                .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true))
-                .andExpect(jsonPath("$.data.sessionToken").value("sess"));
+                .andExpect(jsonPath("$.data.accessToken").value("a"));
     }
 }

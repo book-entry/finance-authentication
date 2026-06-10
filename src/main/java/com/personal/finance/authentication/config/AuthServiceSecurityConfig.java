@@ -17,13 +17,7 @@ import org.springframework.security.web.SecurityFilterChain;
  *
  * <p>Every endpoint matched here is permitted:
  * <ul>
- *   <li>{@code /v1/login/**}    — spec §3.1 / §3.2 / §3.3 (pre-token).</li>
- *   <li>{@code /v1/register/**} — spec §3.4 / §3.5 (pre-token).</li>
- *   <li>{@code /v1/password/**} — spec §3.6–§3.10. §3.6 carries an
- *       {@code Authorization: Bearer} header that is validated explicitly in
- *       {@code PasswordServiceImpl} via {@code FirebaseAuthClient.verifyIdToken},
- *       so Spring Security need not enforce it.</li>
- *   <li>{@code /v1/otp/**}      — spec §3.11 (token in body).</li>
+ *   <li>{@code /v1/login/**} — OAuth login (Google / Apple), pre-token.</li>
  * </ul>
  *
  * <p>CSRF is disabled and the session policy is stateless — the auth service
@@ -35,9 +29,6 @@ public class AuthServiceSecurityConfig {
 
     private static final String[] PERMITTED_PATTERNS = {
             "/v1/login/**",
-            "/v1/register/**",
-            "/v1/password/**",
-            "/v1/otp/**",
             "/actuator/health",
             "/actuator/info"
     };
